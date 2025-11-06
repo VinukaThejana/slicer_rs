@@ -1,3 +1,5 @@
+pub mod model;
+
 use axum::{
     Json,
     http::{StatusCode, header},

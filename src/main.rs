@@ -39,7 +39,12 @@ async fn main() -> anyhow::Result<()> {
     let governor_layer = GovernorLayer::new(governor_conf).error_handler(governor_err);
 
     let app = Router::new()
-        .nest("/api", Router::new().route("/health", get(handler::health)))
+        .nest(
+            "/api",
+            Router::new()
+                .route("/health", get(handler::health))
+                .route("/volume", get(handler::model::calculate_volume)),
+        )
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
