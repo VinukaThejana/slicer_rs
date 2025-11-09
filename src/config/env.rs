@@ -11,6 +11,14 @@ pub struct Env {
     #[serde(deserialize_with = "deserialize_arc_str")]
     pub route_secret: Arc<str>,
 
+    #[validate(length(min = 1, message = "S3_BUCKET_NAME must not be empty"))]
+    #[serde(deserialize_with = "deserialize_arc_str")]
+    pub s3_bucket_name: Arc<str>,
+
+    #[validate(length(min = 1, message = "S3_REGION must not be empty"))]
+    #[serde(deserialize_with = "deserialize_arc_str")]
+    pub s3_region: Arc<str>,
+
     #[validate(range(min = 8080, max = 8090, message = "must be between 8080 and 8090"))]
     pub port: u16,
 }

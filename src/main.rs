@@ -2,7 +2,7 @@ use ::log::info;
 use axum::{
     Router,
     http::{Method, header},
-    routing::get,
+    routing::{get, post},
 };
 use slicer_rs::{
     config::{ENV, log},
@@ -43,7 +43,7 @@ async fn main() -> anyhow::Result<()> {
             "/api",
             Router::new()
                 .route("/health", get(handler::health))
-                .route("/volume", get(handler::model::calculate_volume)),
+                .route("/volume", post(handler::model::calculate_volume)),
         )
         .layer(
             ServiceBuilder::new()

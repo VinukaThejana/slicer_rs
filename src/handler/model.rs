@@ -1,21 +1,63 @@
+use crate::config::ENV;
 use crate::error::AppError;
 use crate::model::MeshParser;
-use crate::{calculate, model};
+use crate::{calculate, model, models};
 use axum::{
     Json,
     http::{StatusCode, header},
     response::IntoResponse,
 };
+use bytes::BytesMut;
+use futures_util::StreamExt;
+use validator::Validate;
 
-pub async fn calculate_volume() -> Result<impl IntoResponse, AppError> {
-    let unit = "cm";
-    // let url = "https://polyvoxel-objects.s3.ap-southeast-1.amazonaws.com/01JX7NKP8V694ESRBEMGG7WPSJ/orders/01K0904Q8RHHMA522WZ1CDFEZ4/01K0904Q8RHHMA522WZ1YDC55P/peugeot-keychain.stl";
-    // let url = "https://polyvoxel-objects.s3.ap-southeast-1.amazonaws.com/testing/Ethereal_Glow_0502184232_texture.stl";
-    // let url =
-    //     "https://polyvoxel-objects.s3.ap-southeast-1.amazonaws.com/testing/Gear+Knob+%5B6cm%5D.stl";
-    let url = "https://polyvoxel-objects.s3.ap-southeast-1.amazonaws.com/testing/Part+Studio+1+-+Part+1-2.stl";
+const MAX_MODEL_FILE_SIZE: usize = 100 * 1024 * 1024; // 100MB
 
-    let response = reqwest::get(url)
+pub async fn calculate_volume(
+    Json(payload): Json<models::mdl::CalculateVolumeReq>,
+) -> Result<impl IntoResponse, AppError> {
+    payload.validate()?;
+
+    let url = format!(
+        "https://{}.s3.{}.amazonaws.com/01JX7NKP8V694ESRBEMGG7WPSJ/orders/{}/{}/{}",
+        ENV.s3_bucket_name, ENV.s3_region, payload.order_id, payload.item_id, payload.file_name,
+    );
+    let client = reqwest::Client::new();
+
+    let head_response = client
+        .head(&url)
+        .send()
+        .await
+        .map_err(|e| AppError::bad_request_with_source("failed to fetch model metadata", e))?;
+
+    if !head_response.status().is_success() {
+        let error = match head_response.status() {
+            reqwest::StatusCode::NOT_FOUND => AppError::not_found("model not found"),
+            _ => AppError::bad_request("failed to fetch model metadata"),
+        };
+        return Err(error);
+    }
+    if let Some(content_length) = head_response.headers().get(reqwest::header::CONTENT_LENGTH)
+        && let Ok(length_str) = content_length.to_str()
+        && let Ok(length) = length_str.parse::<usize>()
+        && length > MAX_MODEL_FILE_SIZE
+    {
+        return Err(AppError::bad_request(format!(
+            "model file too large: {} bytes (max: {} bytes)",
+            length, MAX_MODEL_FILE_SIZE
+        )));
+    }
+
+    let format = head_response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|ct| ct.to_str().ok())
+        .and_then(model::Format::from_content_type)
+        .or_else(|| model::Format::from_url(&url));
+
+    let response = client
+        .get(url)
+        .send()
         .await
         .map_err(|e| AppError::bad_request_with_source("failed to fetch model", e))?;
     let status = response.status();
@@ -27,21 +69,24 @@ pub async fn calculate_volume() -> Result<impl IntoResponse, AppError> {
         return Err(error);
     }
 
-    let format = response
-        .headers()
-        .get(reqwest::header::CONTENT_TYPE)
-        .and_then(|ct| ct.to_str().ok())
-        .and_then(model::Format::from_content_type)
-        .or_else(|| model::Format::from_url(url));
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| AppError::bad_request_with_source("failed to read model bytes", e))?;
+    let mut stream = response.bytes_stream();
+    let mut buffer = BytesMut::with_capacity(8192); // 8KB initial capacity
+    let mut total_size = 0usize;
 
-    const MAX_FILE_SIZE: usize = 100 * 1024 * 1024; // 100MB
-    if bytes.len() > MAX_FILE_SIZE {
-        return Err(AppError::bad_request("model file size exceeds limit"));
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk
+            .map_err(|e| AppError::bad_request_with_source("error reading model stream", e))?;
+        total_size += chunk.len();
+        if total_size > MAX_MODEL_FILE_SIZE {
+            return Err(AppError::bad_request(format!(
+                "model file size exceeds limit during download (max: {} bytes)",
+                MAX_MODEL_FILE_SIZE
+            )));
+        }
+        buffer.extend_from_slice(&chunk);
     }
+
+    let bytes = buffer.freeze();
 
     let format = format
         .or_else(|| model::Format::from_magic_bytes(&bytes))
@@ -55,7 +100,7 @@ pub async fn calculate_volume() -> Result<impl IntoResponse, AppError> {
     }?;
 
     let volume = calculate::volume(&triangles);
-    let volume = match unit {
+    let volume = match payload.unit.as_str() {
         "mm" => volume,
         "cm" => volume / 1000.0,
         "m" => volume / 1_000_000.0,
