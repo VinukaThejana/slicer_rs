@@ -2,6 +2,7 @@ use ::log::info;
 use axum::{
     Router,
     http::{Method, header},
+    middleware,
     routing::{get, post},
 };
 use slicer_rs::{
@@ -41,9 +42,12 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .nest(
             "/api",
-            Router::new()
-                .route("/health", get(handler::health))
-                .route("/volume", post(handler::model::calculate_volume)),
+            Router::new().route("/health", get(handler::health)).route(
+                "/volume",
+                post(handler::model::calculate_volume).route_layer(middleware::from_fn(
+                    slicer_rs::middleware::auth::access_token,
+                )),
+            ),
         )
         .layer(
             ServiceBuilder::new()
