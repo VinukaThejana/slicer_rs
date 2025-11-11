@@ -2,6 +2,7 @@ use crate::config::ENV;
 use crate::error::AppError;
 use crate::model::MeshParser;
 use crate::{calculate, model, models};
+use axum::Extension;
 use axum::{
     Json,
     http::{StatusCode, header},
@@ -14,13 +15,19 @@ use validator::Validate;
 const MAX_MODEL_FILE_SIZE: usize = 100 * 1024 * 1024; // 100MB
 
 pub async fn calculate_volume(
+    Extension(user_id): Extension<models::user::UserId>,
     Json(payload): Json<models::mdl::CalculateVolumeReq>,
 ) -> Result<impl IntoResponse, AppError> {
     payload.validate()?;
 
     let url = format!(
-        "https://{}.s3.{}.amazonaws.com/01JX7NKP8V694ESRBEMGG7WPSJ/orders/{}/{}/{}",
-        ENV.s3_bucket_name, ENV.s3_region, payload.order_id, payload.item_id, payload.file_name,
+        "https://{}.s3.{}.amazonaws.com/{}/orders/{}/{}/{}",
+        ENV.s3_bucket_name,
+        ENV.s3_region,
+        user_id,
+        payload.order_id,
+        payload.item_id,
+        payload.file_name,
     );
     let client = reqwest::Client::new();
 
