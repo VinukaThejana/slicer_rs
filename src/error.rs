@@ -171,11 +171,15 @@ impl IntoResponse for AppError {
 
                 (StatusCode::BAD_REQUEST, "validation", &msg.to_string())
             }
-            AppError::Other(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "other",
-                &String::from("something went wrong"),
-            ),
+            AppError::Other(error) => {
+                log::error!("[other] unexpected error: {:?}", error);
+
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "other",
+                    &String::from("something went wrong"),
+                )
+            }
         };
 
         match (tag == "other", self.source_error()) {
@@ -196,3 +200,23 @@ impl IntoResponse for AppError {
             .into_response()
     }
 }
+
+macro_rules! impl_from_error {
+    ($($t:ty),+ $(,)?) => {
+        $(
+            impl From<$t> for AppError {
+                fn from(err: $t) -> Self {
+                    Self::Other(anyhow::Error::new(err))
+                }
+            }
+        )+
+    };
+}
+
+impl_from_error!(
+    std::io::Error,
+    base64::DecodeError,
+    std::string::FromUtf8Error,
+    yup_oauth2::Error,
+    reqwest::Error,
+);
