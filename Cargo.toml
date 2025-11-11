@@ -2,6 +2,7 @@
 name = "slicer_rs"
 version = "0.1.0"
 edition = "2024"
+build = "build.rs"
 
 [dependencies]
 anyhow = "1.0.100"
@@ -22,11 +23,20 @@ rayon = "1.11.0"
 reqwest = { version = "0.12.24", features = ["json", "stream"] }
 serde = { version = "1.0.228", features = ["derive", "rc"] }
 serde_json = "1.0.145"
-stl_io = "0.8.5"
+stl_io = "0.10.0"
 thiserror = "2.0.17"
-tokio = { version = "1.48.0", features = ["full", "macros", "rt-multi-thread"] }
+tokio = { version = "1.47.2", features = ["full", "macros", "rt-multi-thread"] }
 tower = "0.5.2"
 tower-http = { version = "0.6.6", features = ["full"] }
 tower_governor = { version = "0.8.0", features = ["axum", "tracing"] }
 validator = { version = "0.20.0", features = ["derive"] }
 regex = "1.12.2"
+tonic = { version = "0.14.2", features = ["tls-webpki-roots"] }
+prost = "0.14.1"
+prost-types = "0.14.1"
+base64 = "0.22.1"
+tonic-prost = "0.14.2"
+yup-oauth2 = "12.1.0"
+
+[build-dependencies]
+tonic-prost-build = "0.14.2"
