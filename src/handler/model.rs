@@ -1,6 +1,7 @@
 use crate::config::ENV;
 use crate::error::AppError;
 use crate::model::MeshParser;
+use crate::models::mdl::{CalculateVolumeReq, CalculateVolumeRes};
 use crate::{calculate, model, models};
 use axum::Extension;
 use axum::{
@@ -14,9 +15,31 @@ use validator::Validate;
 
 const MAX_MODEL_FILE_SIZE: usize = 100 * 1024 * 1024; // 100MB
 
+/// Calculate the volume of a 3D model file stored in S3.
+///
+/// The model file must be in STL format and not exceed 100MB in size.
+/// The volume is calculated based on the provided unit (mm, cm, m).
+///
+/// This endpoint requires authentication. The user's access token must be
+/// provided in the Authorization header as a Bearer token.
+#[utoipa::path(
+    post,
+    path = "/api/volume",
+    tag = "Model Calculations",
+    request_body = CalculateVolumeReq,
+    responses(
+        (status = 200, description = "Volume calculated successfully", body = CalculateVolumeRes),
+        (status = 400, description = "Bad Request (file too large, invalid format, validation error)", body = models::error::ResponseError),
+        (status = 404, description = "Model not found, or related error", body = models::error::ResponseError),
+        (status = 500, description = "Internal Server Error", body = models::error::ResponseError),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn calculate_volume(
     Extension(user_id): Extension<models::user::UserId>,
-    Json(payload): Json<models::mdl::CalculateVolumeReq>,
+    Json(payload): Json<CalculateVolumeReq>,
 ) -> Result<impl IntoResponse, AppError> {
     payload.validate()?;
 
@@ -117,10 +140,6 @@ pub async fn calculate_volume(
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(serde_json::json!({
-            "status": "success",
-            "triangles": triangles.len(),
-            "volume": volume,
-        })),
+        Json(CalculateVolumeRes::new(triangles.len(), volume)),
     ))
 }

@@ -1,3 +1,4 @@
+pub mod api_docs;
 pub mod calculate;
 pub mod config;
 pub mod error;

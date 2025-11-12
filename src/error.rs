@@ -5,6 +5,8 @@ use axum::{
 };
 use validator::ValidationErrors;
 
+use crate::models;
+
 pub trait StdErrorExt: std::error::Error + Send + Sync + 'static {}
 impl<T> StdErrorExt for T where T: std::error::Error + Send + Sync + 'static {}
 
@@ -192,10 +194,10 @@ impl IntoResponse for AppError {
         (
             status_code,
             [(header::CONTENT_TYPE, "application/json")],
-            Json(serde_json::json!({
-                "status": "error",
-                "message": user_message
-            })),
+            Json(models::error::ResponseError {
+                status: String::from("error"),
+                message: user_message.to_string(),
+            }),
         )
             .into_response()
     }

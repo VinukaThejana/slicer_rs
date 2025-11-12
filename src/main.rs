@@ -6,6 +6,7 @@ use axum::{
     routing::{get, post},
 };
 use slicer_rs::{
+    api_docs::ApiDoc,
     config::{ENV, log},
     handler,
     util::{governor_conf, governor_err, shutdown},
@@ -19,6 +20,8 @@ use tower_http::{
     timeout::TimeoutLayer,
     trace::TraceLayer,
 };
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -40,14 +43,12 @@ async fn main() -> anyhow::Result<()> {
     let governor_layer = GovernorLayer::new(governor_conf).error_handler(governor_err);
 
     let app = Router::new()
-        .nest(
-            "/api",
-            Router::new().route("/health", get(handler::health)).route(
-                "/volume",
-                post(handler::model::calculate_volume).route_layer(middleware::from_fn(
-                    slicer_rs::middleware::auth::access_token,
-                )),
-            ),
+        .route("/health", get(handler::health))
+        .route(
+            "/volume",
+            post(handler::model::calculate_volume).route_layer(middleware::from_fn(
+                slicer_rs::middleware::auth::access_token,
+            )),
         )
         .layer(
             ServiceBuilder::new()
@@ -62,12 +63,16 @@ async fn main() -> anyhow::Result<()> {
         )
         .layer(governor_layer);
 
+    let router = Router::new()
+        .merge(SwaggerUi::new("/api-docs").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .nest("/api", app);
+
     info!("up and running on : {}", &ENV.port);
     axum::serve(
         TcpListener::bind(&format!("0.0.0.0:{}", &ENV.port))
             .await
             .unwrap(),
-        app.into_make_service_with_connect_info::<SocketAddr>(),
+        router.into_make_service_with_connect_info::<SocketAddr>(),
     )
     .with_graceful_shutdown(shutdown())
     .await
