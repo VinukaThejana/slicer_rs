@@ -39,7 +39,7 @@ tonic-prost = "0.14.2"
 yup-oauth2 = "12.1.0"
 utoipa = { version = "5.4.0", features = ["axum_extras"] }
 utoipauto = "0.2.0"
-utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
+utoipa-swagger-ui = { version = "9.0.2", features = ["axum", "reqwest"] }
 
 [build-dependencies]
 tonic-prost-build = "0.14.2"
