@@ -42,11 +42,11 @@ pub struct CalculateVolumeRes {
     triangles: usize,
 
     #[schema(example = 12.345)]
-    volume: f32,
+    volume: f64,
 }
 
 impl CalculateVolumeRes {
-    pub fn new(triangles: usize, volume: f32) -> Self {
+    pub fn new(triangles: usize, volume: f64) -> Self {
         Self {
             status: "success".to_string(),
             triangles,
