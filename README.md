@@ -19,17 +19,17 @@ slicer_rs is a high-performance API that analyzes 3D models to calculate the est
 ## Project Roadmap
 
 - [x] STL file format support
-- [ ] OBJ file format support
+- [x] OBJ file format support
+- [x] Autoscale the user given measurement if the model is too small
 - [ ] Additional 3D file formats
 - [x] Basic cost calculation with signed volumes and material density
 - [ ] Automatic model repair for zero faces
 - [ ] Automatic model repair for watertight issues
-- [ ] Enhanced cost breakdown with material-specific calculations
 - [ ] Multi-material printing cost estimation (with MTL files)
 
 ## Current Limitations
 
-- Only processes STL files
+- Only processes STL,OBJ files
 - Does not attempt to repair models with zero faces or watertight issues
 - Limited to specific printer parameters (will be configurable in future versions)
 
