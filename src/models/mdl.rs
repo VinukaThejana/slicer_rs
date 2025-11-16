@@ -35,22 +35,47 @@ pub struct CalculateVolumeReq {
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct CalculateVolumeRes {
+    /// number of triangles in the 3D model
     #[schema(example = "success")]
     status: String,
 
+    /// number of triangles in the 3D model
     #[schema(example = 15_000)]
     triangles: usize,
 
+    /// calculated volume in cubic units, based on the model's native scale
+    #[schema(example = -1)]
     #[schema(example = 12.345)]
-    volume: f32,
+    volume: f64,
+
+    /// volume after applying the user provided scale factor
+    #[schema(example = 1234.567)]
+    scaled_volume: f64,
+
+    /// flag indicating whether scaling was applied
+    #[schema(example = false)]
+    scaled: bool,
+
+    /// unit of measurement: "mm", "cm", or "m"
+    #[schema(example = "cm")]
+    unit: String,
 }
 
 impl CalculateVolumeRes {
-    pub fn new(triangles: usize, volume: f32) -> Self {
+    pub fn new(
+        triangles: usize,
+        volume: f64,
+        scaled_volume: f64,
+        is_scaled: bool,
+        unit: String,
+    ) -> Self {
         Self {
             status: "success".to_string(),
             triangles,
             volume,
+            scaled_volume,
+            scaled: is_scaled,
+            unit,
         }
     }
 }
