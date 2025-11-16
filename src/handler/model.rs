@@ -52,6 +52,7 @@ pub async fn calculate_volume(
         payload.item_id,
         payload.file_name,
     );
+
     let client = reqwest::Client::new();
 
     let head_response = client
@@ -121,12 +122,14 @@ pub async fn calculate_volume(
     let format = format
         .or_else(|| model::Format::from_magic_bytes(&bytes))
         .ok_or_else(|| AppError::bad_request("unsupported model format"))?;
+    log::debug!("detected model format: {:?}", format);
     if !format.validate_bytes(&bytes) {
         return Err(AppError::bad_request("invalid model file"));
     }
 
     let triangles = match format {
         model::Format::STL => model::stl::STlParser::parse(&bytes),
+        model::Format::OBJ => model::obj::OBJParser::parse(&bytes),
     }?;
 
     let volume = calculate::volume(&triangles);
@@ -137,9 +140,23 @@ pub async fn calculate_volume(
         _ => volume,
     };
 
+    let mut is_scaled = false;
+    let mut scaled = calculate::autoscale(volume, &payload.unit);
+    if volume != scaled {
+        is_scaled = true;
+    } else {
+        scaled = 0.0;
+    }
+
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/json")],
-        Json(CalculateVolumeRes::new(triangles.len(), volume)),
+        Json(CalculateVolumeRes::new(
+            triangles.len(),
+            volume,
+            scaled,
+            is_scaled,
+            payload.unit,
+        )),
     ))
 }

@@ -85,3 +85,33 @@ fn khan_sum(triangles: &[model::Triangle]) -> f64 {
 
     sum
 }
+
+pub fn autoscale(raw_volume: f64, unit: &str) -> f64 {
+    // thresholds for units
+    let (min_v, max_v) = match unit {
+        "mm" => (1.0, 10_000_000.0),
+        "cm" => (0.1, 100_000.0),
+        "m" => (1e-6, 100.0),
+        _ => return raw_volume,
+    };
+
+    if raw_volume >= min_v && raw_volume <= max_v {
+        return raw_volume;
+    }
+
+    // common scale corrections
+    let scales: [(&str, f64); 3] = [
+        ("cm", 10.0),   // cm to mm conversion
+        ("m", 1000.0),  // m to mm
+        ("inch", 25.4), // inch to mm
+    ];
+
+    for (_, factor) in scales {
+        let fixed_volume = raw_volume * factor.powi(3);
+        if fixed_volume >= min_v && fixed_volume <= max_v {
+            return fixed_volume;
+        }
+    }
+
+    raw_volume
+}
