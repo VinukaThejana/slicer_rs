@@ -6,8 +6,20 @@ use rayon::prelude::*;
 #[derive(Clone, Copy, Debug)]
 pub struct Vec3(pub f32, pub f32, pub f32);
 
+impl From<Vec3> for [f32; 3] {
+    fn from(v: Vec3) -> Self {
+        [v.0, v.1, v.2]
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct Vec2(pub f32, pub f32);
+
+impl From<Vec2> for [f32; 2] {
+    fn from(v: Vec2) -> Self {
+        [v.0, v.1]
+    }
+}
 
 impl Vec3 {
     pub fn substraction(self, other: Vec3) -> Vec3 {
