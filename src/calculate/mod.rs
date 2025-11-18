@@ -63,16 +63,16 @@ pub fn volume(triangles: &[model::Triangle]) -> f64 {
     const CHUNK_SIZE: usize = 1000;
 
     let total_volume: f64 = if triangles.len() >= PARALLEL_THRESHOLD {
-        triangles.par_chunks(CHUNK_SIZE).map(khan_sum).sum()
+        triangles.par_chunks(CHUNK_SIZE).map(kahan_sum).sum()
     } else {
-        khan_sum(triangles)
+        kahan_sum(triangles)
     };
 
     total_volume.abs()
 }
 
 #[inline]
-fn khan_sum(triangles: &[model::Triangle]) -> f64 {
+fn kahan_sum(triangles: &[model::Triangle]) -> f64 {
     let mut sum = 0.0f64;
     let mut compensation = 0.0f64;
 
